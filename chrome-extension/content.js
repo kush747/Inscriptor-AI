@@ -21,21 +21,51 @@ function createAIButton(composeBox) {
 
         const emailText = composeBox.innerText;
 
-        const response = await fetch("http://localhost:9090/api/email/generate", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                emailContent: emailText,
-                tone: "professional",
-                language: "English"
-            })
-        });
+        // Disable button + show loading state
+        button.disabled = true;
+        const originalText = button.innerText;
+        button.innerText = "Generating...";
+        button.style.opacity = "0.7";
+        button.style.cursor = "not-allowed";
 
-        const reply = await response.text();
+        try {
 
-        composeBox.innerText = reply;
+            const response = await fetch("http://localhost:9090/api/email/generate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    emailContent: emailText,
+                    tone: "professional",
+                    language: "English"
+                })
+            });
+
+            // If backend returns error status
+            if (!response.ok) {
+                throw new Error("Backend error");
+            }
+
+            const reply = await response.text();
+
+            composeBox.innerText = reply;
+
+        } catch (error) {
+
+            console.error("AI Reply Error:", error);
+
+            composeBox.innerText =
+                "⚠️ Unable to generate email reply. Backend service may not be running properly.";
+
+        } finally {
+
+            // Restore button state
+            button.disabled = false;
+            button.innerText = originalText;
+            button.style.opacity = "1";
+            button.style.cursor = "pointer";
+        }
     };
 
     composeBox.parentElement.appendChild(button);
@@ -43,7 +73,7 @@ function createAIButton(composeBox) {
 
 function observeGmail() {
 
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver(() => {
 
         const composeBoxes = document.querySelectorAll('[role="textbox"]');
 
